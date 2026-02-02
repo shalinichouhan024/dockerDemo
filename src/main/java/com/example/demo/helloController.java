@@ -8,6 +8,6 @@ public class helloController {
 
     @GetMapping("/")
     public String greet(){
-        return "Hi there Shalini!";
+        return "Hello from Cloud Run via GitHub Actions!!!";
     }
 }
