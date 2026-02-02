@@ -34,6 +34,12 @@ jobs:
       - name: Build Spring Boot JAR
         run: mvn clean package -DskipTests
 
+      - name: Debug OIDC token
+        run: |
+          echo "TOKEN:"
+          curl -s -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL?audience=google-cloud" | jq .  
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -62,3 +68,5 @@ jobs:
             --region $REGION \
             --platform managed \
             --allow-unauthenticated
+          
+          
