@@ -1,4 +1,4 @@
-name: CI/CD to Cloud Run
+name: CI/CD - Spring Boot to Cloud Run
 
 on:
   push:
@@ -22,15 +22,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout source
         uses: actions/checkout@v3
-
-      # Optional debug step (remove later)
-      - name: Debug OIDC token
-        run: |
-          echo "OIDC TOKEN DATA:"
-          curl -s -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL?audience=google-cloud"
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -38,21 +31,24 @@ jobs:
           workload_identity_provider: projects/618952330758/locations/global/workloadIdentityPools/github-pool-v2/providers/github-provider-v3
           service_account: github-actions-sa@project-d856877c-3f41-49e7-a70.iam.gserviceaccount.com
 
-      - name: Configure Docker
-        run: gcloud auth configure-docker asia-south1-docker.pkg.dev
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker asia-south1-docker.pkg.dev --quiet
 
       - name: Build Docker image
         run: |
-          docker build -t asia-south1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:latest .
+          docker build -t asia-south1-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:${{ github.sha }} .
 
       - name: Push Docker image
         run: |
-          docker push asia-south1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:latest
+          docker push asia-south1-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:${{ github.sha }}
 
       - name: Deploy to Cloud Run
         run: |
-          gcloud run deploy ${{ env.SERVICE_NAME }} \
-            --image asia-south1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:latest \
-            --region ${{ env.REGION }} \
+          gcloud run deploy $SERVICE_NAME \
+            --image asia-south1-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:${{ github.sha }} \
+            --region $REGION \
             --platform managed \
             --allow-unauthenticated
