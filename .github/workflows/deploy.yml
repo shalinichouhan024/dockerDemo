@@ -1,4 +1,4 @@
-name: CI/CD - Spring Boot to Cloud Run
+name: CI/CD to Cloud Run
 
 on:
   push:
@@ -18,55 +18,47 @@ env:
   IMAGE: demo-app-img
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
+      # 1️⃣ Checkout code
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - name: Build Spring Boot JAR
-        run: mvn clean package -DskipTests
-
+      # 2️⃣ Debug OIDC token (optional, can remove later)
       - name: Debug OIDC token
         run: |
           echo "OIDC TOKEN DATA:"
           curl -s -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
             "$ACTIONS_ID_TOKEN_REQUEST_URL?audience=google-cloud"
 
+      # 3️⃣ Authenticate to Google Cloud using Workload Identity Federation
       - name: Authenticate to Google Cloud (WIF)
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: projects/618952330758/locations/global/workloadIdentityPools/github-pool/providers/github-provider-v2
-          service_account: github-actions-sa@project-d856877c-3f41-49e7-a70.iam.gserviceaccount.com
+          workload_identity_provider: projects/${{ env.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github-pool/providers/github-provider-v2
+          service_account: github-actions-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
 
-      - name: Set up gcloud
-        uses: google-github-actions/setup-gcloud@v2
+      # 4️⃣ Configure Docker to use gcloud as credential helper
+      - name: Configure Docker
+        run: gcloud auth configure-docker asia-south1-docker.pkg.dev
 
-      - name: Configure Docker for Artifact Registry
-        run: |
-          gcloud auth configure-docker asia-south1-docker.pkg.dev --quiet
-
+      # 5️⃣ Build Docker image
       - name: Build Docker image
         run: |
-          docker build -t asia-south1-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:${{ github.sha }} .
+          docker build -t asia-south1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:latest .
 
+      # 6️⃣ Push Docker image to Artifact Registry
       - name: Push Docker image
         run: |
-          docker push asia-south1-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:${{ github.sha }}
+          docker push asia-south1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:latest
 
+      # 7️⃣ Deploy to Cloud Run
       - name: Deploy to Cloud Run
         run: |
-          gcloud run deploy $SERVICE_NAME \
-            --image asia-south1-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:${{ github.sha }} \
-            --region $REGION \
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --image asia-south1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:latest \
+            --region ${{ env.REGION }} \
             --platform managed \
             --allow-unauthenticated
-          
-          
