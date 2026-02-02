@@ -36,14 +36,14 @@ jobs:
 
       - name: Debug OIDC token
         run: |
-          echo "TOKEN:"
+          echo "OIDC TOKEN DATA:"
           curl -s -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL?audience=google-cloud" | jq .  
+            "$ACTIONS_ID_TOKEN_REQUEST_URL?audience=google-cloud"
 
-      - name: Authenticate to Google Cloud
+      - name: Authenticate to Google Cloud (WIF)
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: projects/618952330758/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+          workload_identity_provider: projects/${{ env.PROJECT_ID }}/locations/global/workloadIdentityPools/github-pool/providers/github-provider-v2
           service_account: github-actions-sa@project-d856877c-3f41-49e7-a70.iam.gserviceaccount.com
 
       - name: Set up gcloud
