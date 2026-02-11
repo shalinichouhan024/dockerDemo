@@ -51,4 +51,5 @@ jobs:
             --image asia-south1-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:${{ github.sha }} \
             --region $REGION \
             --platform managed \
-            --allow-unauthenticated
+            --allow-unauthenticated \
+            --set-secrets DB_USERNAME=db-username:1,DB_PASSWORD=db-password:1,CLOUD_SQL_INSTANCE=cloud-sql-instance:2,DB_NAME=db-name:1
